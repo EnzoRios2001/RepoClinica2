@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="MediAppoint - Sistema de Reserva de Citas Médicas" />
+    <title>MediAppoint</title>
+    <link rel="stylesheet" href="estilo.css" />
+  </head>
+  <body>
+    <!-- Header -->
+    <header>
+      <div class="header-container">
+        <h1>Clinica MedioPelo</h1>
+        <div class="header-buttons">
+          <div id="userSection" style="display: none;">
+            <button class="nav-btn">Buscar</button>
+            <button class="nav-btn">Ayuda</button>
+            <button id="changeViewBtn" class="nav-btn" style="display: none;">Cambiar Vista</button>
+            <span id="userName"></span>
+            <button id="logoutBtn">Cerrar sesión</button>
+          </div>
+          <div id="guestSection">
+            <button class="nav-btn">Buscar</button>
+            <button class="nav-btn">Ayuda</button>
+            <button class="login" id="loginBtn">Iniciar sesión</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    
+
+    <!-- Hero Shortcuts -->
+    <div class="hero-shortcuts">
+      <button id="miPerfilBtn">
+        <span class="icon-placeholder"></span>
+        <span>Mi Perfil</span>
+      </button>
+      <button onclick="window.location.href='turno.html'">
+        <span class="icon-placeholder"></span>
+        <span>Solicitar turno</span>
+      </button>
+ 
+      <button>
+        <span class="icon-placeholder"></span>
+        <span>Solicitar estudio</span>
+      </button>
+      <button>
+        <span class="icon-placeholder"></span>
+        <span>Solicitar análisis</span>
+      </button>
+    </div>
+
+    <!-- Categories -->
+    <div class="categories">
+      <div class="categories-grid">
+        <button><span>General</span></button>
+        <button><span>Especialistas</span></button>
+        <button><span>Cirujanos</span></button>
+        <button><span>Cardiólogo</span></button>
+        <button><span>Neurólogo</span></button>
+        <button><span>Dentistas</span></button>
+        <button><span>Fisioterapeuta</span></button>
+        <button><span>Pediatra</span></button>
+      </div>
+    </div>
+
+    <!-- Popular Section -->
+    <div class="popular" id="popularSection">
+        <div class="popular-image">
+        <img src="img/fondo2.jpg" alt="Consulta médica en escritorio">
+      </div>
+    </div>
+      
+    <div class="popular-header">
+    <h3>¿Necesitas ayuda? Contactanos:</h3>
+    <form class="contact-form">
+    <input type="email" placeholder="Tu correo electrónico" required>
+    <textarea placeholder="Describe tu consulta" rows="4" required></textarea>
+    <button type="submit">Enviar</button>
+  </form>
+    </div>
+
+    <!-- Modal de inicio de sesión -->
+<div id="loginModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <span class="close" id="closeModal">&times;</span>
+    <h2>Iniciar sesión</h2>
+    <form id="loginForm">
+      <input type="email" name="email" placeholder="Correo electrónico" required>
+      <input type="password" name="password" placeholder="Contraseña" required>
+      <button type="submit">Entrar</button>
+    </form>
+    <p class="register-text">¿No tienes una cuenta? <a href="#" id="registerLink" class="register-link">Regístrate</a></p>
+  </div>
+</div>
+
+<!-- Modal de registro -->
+<div id="registerModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <span class="close" id="closeRegisterModal">&times;</span>
+    <form id="formPaciente">
+      <label for="nombre_paciente">Nombre:</label>
+      <input type="text" id="nombre_paciente" name="nombre_paciente" required />
+      <label for="apellido_paciente">Apellido:</label>
+      <input type="text" id="apellido_paciente" name="apellido_paciente" />
+      <label for="dni_paciente">DNI:</label>
+      <input type="text" id="dni_paciente" name="dni_paciente" required />
+      <label for="correo_paciente">Correo:</label>
+      <input type="text" id="correo_paciente" name="correo_paciente" required />
+      <label for="contraseña_paciente">Contraseña:</label>
+      <input type="text" id="contraseña_paciente" name="contraseña_paciente" required />
+      <button type="submit">Registrar Paciente</button>
+  </form>
+  </div>
+</div>
+
+<div id="roleModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <h2>Seleccionar Vista</h2>
+    <p>¿Cómo deseas ingresar al sistema?</p>
+    <button id="viewAsDoctor" class="role-btn">Vista de Doctor</button>
+    <button id="viewAsSecretary" class="role-btn">Vista de Secretaria</button>
+    <button id="viewAsPatient" class="role-btn">Vista de Paciente</button>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase } from './supabaseClient.js';
+
+  const loginBtn = document.getElementById('loginBtn');
+  const loginModal = document.getElementById('loginModal');
+  const registerModal = document.getElementById('registerModal');
+  const roleModal = document.getElementById('roleModal');
+  const closeModal = document.getElementById('closeModal');
+  const closeRegisterModal = document.getElementById('closeRegisterModal');
+  const registerLink = document.getElementById('registerLink');
+  const userSection = document.getElementById('userSection');
+  const guestSection = document.getElementById('guestSection');
+  const userName = document.getElementById('userName');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const loginForm = document.getElementById('loginForm');
+  const viewAsDoctor = document.getElementById('viewAsDoctor');
+  const viewAsPatient = document.getElementById('viewAsPatient');
+  const viewAsSecretary = document.getElementById('viewAsSecretary');
+  const changeViewBtn = document.getElementById('changeViewBtn');
+
+  loginBtn.onclick = () => loginModal.style.display = 'block';
+  
+  // Función para mostrar el modal de cambio de vista
+  changeViewBtn.onclick = () => {
+    roleModal.style.display = 'block';
+  };
+  closeModal.onclick = () => loginModal.style.display = 'none';
+  closeRegisterModal.onclick = () => registerModal.style.display = 'none';
+  
+  registerLink.onclick = (e) => {
+    e.preventDefault();
+    loginModal.style.display = 'none';
+    registerModal.style.display = 'block';
+  };
+
+  viewAsDoctor.onclick = () => {
+    window.location.href = 'index_doc.html';
+  };
+
+  viewAsSecretary.onclick = () => {
+    window.location.href = 'index_sec.html';
+  };
+
+  viewAsPatient.onclick = () => {
+    // Si está en index.html, solo cerramos el modal
+    if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
+      roleModal.style.display = 'none';
+    } else {
+      // Si está en otra vista, redirigimos a index.html
+      window.location.href = 'index.html';
+    }
+  };
+
+  loginForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(loginForm);
+    const email = formData.get('email');
+    const password = formData.get('password');
+
+    // Primero obtenemos los datos del usuario
+    const { data: userData, error: userError } = await supabase
+      .from('usuarios')
+      .select('id_usuario, nombre, apellido')
+      .eq('correo', email)
+      .eq('contraseña', password)
+      .single();
+
+    if (userError) {
+      alert('Error al iniciar sesión: ' + userError.message);
+      return;
+    }
+
+    if (userData) {
+      // Obtener todos los roles del usuario
+      const { data: userRolesData, error: rolesErrorData } = await supabase
+        .from('roles_usuario')
+        .select('rol')
+        .eq('id_usuario', userData.id_usuario);
+
+      if (rolesErrorData) {
+        alert('Error al verificar roles: ' + rolesErrorData.message);
+        return;
+      }
+
+      // Guardar datos del usuario en sessionStorage con todos sus roles
+      sessionStorage.setItem('usuario', JSON.stringify({
+        ...userData,
+        roles: userRolesData.map(r => r.rol)
+      }));
+      
+      // Mostrar nombre del usuario
+      userName.textContent = `${userData.nombre} ${userData.apellido}`;
+      userSection.style.display = 'flex';
+      guestSection.style.display = 'none';
+      loginModal.style.display = 'none';
+      loginForm.reset();
+
+      // Obtener todos los roles del usuario
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('roles_usuario')
+        .select('rol')
+        .eq('id_usuario', userData.id_usuario);
+
+      if (rolesError) {
+        alert('Error al obtener roles: ' + rolesError.message);
+        return;
+      }
+
+      // Convertir los roles a un conjunto para fácil verificación
+      const roles = new Set(userRoles.map(r => r.rol));
+
+      // Si tiene rol de doctor o secretaria, mostrar modal de selección y habilitar botón de cambio de vista
+      if (roles.size > 1 || roles.has('doctor') || roles.has('secretaria')) {
+        roleModal.style.display = 'block';
+        // Mostrar u ocultar botones según los roles
+        viewAsDoctor.style.display = roles.has('doctor') ? 'block' : 'none';
+        viewAsSecretary.style.display = roles.has('secretaria') ? 'block' : 'none';
+        // El botón de paciente siempre está visible ya que todos tienen acceso a esta vista
+        viewAsPatient.style.display = 'block';
+        // Mostrar el botón de cambio de vista
+        changeViewBtn.style.display = 'block';
+      } else {
+        changeViewBtn.style.display = 'none';
+      }
+    } else {
+      alert('Correo o contraseña incorrectos');
+    }
+  };
+
+  logoutBtn.onclick = () => {
+    sessionStorage.removeItem('usuario');
+    userSection.style.display = 'none';
+    guestSection.style.display = 'flex';
+  };
+
+  // Verificar si hay un usuario en sesión al cargar la página
+  window.onload = () => {
+    const usuarioGuardado = sessionStorage.getItem('usuario');
+    if (usuarioGuardado) {
+      const usuario = JSON.parse(usuarioGuardado);
+      userName.textContent = `${usuario.nombre} ${usuario.apellido}`;
+      userSection.style.display = 'flex';
+      guestSection.style.display = 'none';
+
+      // Verificar si el usuario tiene múltiples roles o roles especiales para mostrar el botón de cambio de vista
+      const roles = new Set(usuario.roles || ['paciente']);
+      if (roles.size > 1 || roles.has('doctor') || roles.has('secretaria')) {
+        changeViewBtn.style.display = 'block';
+      } else {
+        changeViewBtn.style.display = 'none';
+      }
+    }
+  };
+
+  window.onclick = (e) => {
+    if (e.target == loginModal) loginModal.style.display = 'none';
+    if (e.target == registerModal) registerModal.style.display = 'none';
+    if (e.target == roleModal) roleModal.style.display = 'none';
+  }
+</script>
+
+<script>
+  // Función para manejar el botón Mi Perfil
+  const miPerfilBtn = document.getElementById('miPerfilBtn');
+  
+  miPerfilBtn.onclick = () => {
+    const usuarioGuardado = sessionStorage.getItem('usuario');
+    if (!usuarioGuardado) {
+      // Si no hay sesión, mostrar modal de login
+      loginModal.style.display = 'block';
+    } else {
+      // Si hay sesión, redirigir a mi perfil
+      window.location.href = 'miperfil.html';
+    }
+  };
+
+  // Función para manejar la contracción/expansión de la imagen
+  const popularSection = document.getElementById('popularSection');
+  let lastScrollPosition = window.pageYOffset;
+  let ticking = false;
+  
+  function handleScroll() {
+    lastScrollPosition = window.pageYOffset;
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        const sectionPosition = popularSection.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        
+        // La imagen se contrae cuando está completamente visible
+        // y se expande cuando su parte superior sale de la vista (top < 0)
+        if (sectionPosition.top >= 0 && sectionPosition.bottom <= windowHeight) {
+          if (!popularSection.classList.contains('contracted')) {
+            popularSection.classList.add('contracted');
+          }
+        } else if (sectionPosition.top < 0) {
+          if (popularSection.classList.contains('contracted')) {
+            popularSection.classList.remove('contracted');
+          }
+        }
+        
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+
+  // Optimización del evento scroll con throttling
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  window.addEventListener('resize', handleScroll, { passive: true });
+  
+  // Verificar estado inicial
+  handleScroll();
+</script>
+
+    <!-- Footer -->
+    <footer>
+      <div class="footer-container">
+        <div class="footer-grid">
+          <div>
+            <h3>Mantente conectado con MediAppoint</h3>
+            <input
+              type="email"
+              placeholder="Ingresa tu correo electrónico"
+            />
+          </div>
+          <div>
+            <h3>Acerca de</h3>
+            <ul>
+              <li>Servicios</li>
+              <li>Médicos</li>
+              <li>Citas</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Síguenos</h3>
+            <ul>
+              <li>Facebook</li>
+              <li>Twitter</li>
+              <li>Instagram</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Para Pacientes</h3>
+            <ul>
+              <li>Facturación de seguros</li>
+              <li>Historial médico</li>
+              <li>Emergencia</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

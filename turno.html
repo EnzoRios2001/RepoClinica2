@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitar Turno - MediAppoint</title>
+    <link rel="stylesheet" href="turno.css">
+    <script type="module" src="./supabaseClient.js"></script>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">Volver al Inicio</a>
+        <div class="selectors">
+            <div class="selector-box">
+                <h3>Seleccionar Doctor</h3>
+                <select id="doctorSelect">
+                    <option value="">Seleccione un doctor</option>
+                </select>
+            </div>
+            <div class="selector-box">
+                <h3>Seleccionar Especialidad</h3>
+                <select id="especialidadSelect">
+                    <option value="">Seleccione una especialidad</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="calendar">
+            <div class="calendar-header">
+                <div class="calendar-nav">
+                    <button id="prevMonth">&lt;</button>
+                </div>
+                <h2 id="currentMonth"></h2>
+                <div class="calendar-nav">
+                    <button id="nextMonth">&gt;</button>
+                </div>
+            </div>
+            <div class="calendar-grid">
+                <div class="day-header">Dom</div>
+                <div class="day-header">Lun</div>
+                <div class="day-header">Mar</div>
+                <div class="day-header">Mié</div>
+                <div class="day-header">Jue</div>
+                <div class="day-header">Vie</div>
+                <div class="day-header">Sáb</div>
+            </div>
+            <div class="calendar-grid" id="calendar-days"></div>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="time-slots" id="timeSlots">
+        <button class="close-modal" onclick="closeTimeSlots()">&times;</button>
+        <h3>Seleccionar Horario</h3>
+        <div class="time-grid"></div>
+    </div>
+
+    <div class="confirmation-modal" id="confirmationModal">
+        <h3>Confirmar Turno</h3>
+        <div class="confirmation-details" id="confirmationDetails"></div>
+        <div class="confirmation-buttons">
+            <button class="cancel-btn" onclick="cancelarConfirmacion()">Cancelar</button>
+            <button class="confirm-btn" onclick="confirmarTurno()">Confirmar</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from './supabaseClient.js';
+        import { 
+            diasSemana, 
+            meses, 
+            handleError, 
+            toggleElementDisplay, 
+            formatearFecha,
+            generarIntervalosHorarios,
+            actualizarSelect 
+        } from './utils.js';
+        
+        let currentDate = new Date();
+        let selectedDate = null;
+        let todasLasEspecialidades = [];
+        let todosLosDoctores = [];
+        let diasDisponiblesDoctor = [];
+        let horarioDoctor = null;
+        let isUpdatingDoctor = false;
+        let isUpdatingEspecialidad = false;
+
+        window.turnoPendiente = null;
+        window.closeTimeSlots = () => {
+            toggleElementDisplay('overlay', false);
+            toggleElementDisplay('timeSlots', false);
+            toggleElementDisplay('confirmationModal', false);
+        };
+        
+        window.cancelarConfirmacion = () => {
+            toggleElementDisplay('confirmationModal', false);
+            toggleElementDisplay('overlay', false);
+            window.turnoPendiente = null;
+        };
+
+        function obtenerNombreDia(fecha) {
+            const dias = {
+                0: 'Domingo',
+                1: 'Lunes',
+                2: 'Martes',
+                3: 'Miércoles',
+                4: 'Jueves',
+                5: 'Viernes',
+                6: 'Sábado'
+            };
+            return dias[fecha.getDay()];
+        }
+
+        async function obtenerIdDiaSemana(fecha) {
+            try {
+                const nombreDia = obtenerNombreDia(fecha);
+                console.log('Nombre del día calculado:', nombreDia);
+                return nombreDia;
+            } catch (error) {
+                console.error('Error en obtenerIdDiaSemana:', error);
+                throw error;
+            }
+        }
+
+        function esDiaDisponible(fecha) {
+            if (!diasDisponiblesDoctor.length) return false;
+            const nombreDia = obtenerNombreDia(fecha);
+            return diasDisponiblesDoctor.includes(nombreDia);
+        }
+
+        function updateCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('currentMonth').textContent = `${meses[month]} ${year}`;
+            const calendarDays = document.getElementById('calendar-days');
+            calendarDays.innerHTML = '';
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const firstDayIndex = firstDay.getDay();
+            const lastDayOfPrevMonth = new Date(year, month, 0).getDate();
+
+            // Días del mes anterior
+            for (let i = firstDayIndex - 1; i >= 0; i--) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day disabled';
+                dayElement.textContent = lastDayOfPrevMonth - i;
+                calendarDays.appendChild(dayElement);
+            }
+
+            // Días del mes actual
+            const today = new Date();
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = day;
+                
+                const currentDayDate = new Date(year, month, day);
+                
+                // Marcar el día de hoy
+                if (year === today.getFullYear() && 
+                    month === today.getMonth() && 
+                    day === today.getDate()) {
+                    dayElement.classList.add('today');
+                }
+
+                // Deshabilitar días pasados y días no disponibles
+                if (currentDayDate < new Date().setHours(0,0,0,0)) {
+                    dayElement.classList.add('disabled');
+                } else if (diasDisponiblesDoctor && diasDisponiblesDoctor.length > 0) {
+                    if (!esDiaDisponible(currentDayDate)) {
+                        dayElement.classList.add('disabled');
+                    } else {
+                        dayElement.onclick = () => selectDate(dayElement, year, month, day);
+                    }
+                } else {
+                    dayElement.classList.add('disabled');
+                }
+
+                calendarDays.appendChild(dayElement);
+            }
+
+            // Calcular días del próximo mes
+            const remainingDays = 42 - (firstDayIndex + lastDay.getDate());
+            for (let i = 1; i <= remainingDays; i++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day disabled';
+                dayElement.textContent = i;
+                calendarDays.appendChild(dayElement);
+            }
+        }
+
+        function selectDate(element, year, month, day) {
+            document.querySelector('.selected')?.classList.remove('selected');
+            element.classList.add('selected');
+            selectedDate = new Date(year, month, day);
+
+            actualizarModalHorarios();
+            toggleElementDisplay('overlay', true);
+            toggleElementDisplay('timeSlots', true);
+        }
+
+        async function actualizarModalHorarios() {
+            const timeGrid = document.querySelector('.time-grid');
+            timeGrid.innerHTML = '';
+
+            if (horarioDoctor) {
+                const doctorId = document.getElementById('doctorSelect').value;
+                
+                const { data: turnosExistentes, error: turnosError } = await supabase
+                    .from('solicitudes_turno')
+                    .select('hora_turno')
+                    .eq('doctor_id', doctorId)
+                    .eq('fecha_turno', selectedDate.toISOString().split('T')[0]);
+
+                if (turnosError) {
+                    handleError(turnosError, 'Error al verificar turnos existentes');
+                    return;
+                }
+
+                const horariosOcupados = new Set(turnosExistentes.map(t => t.hora_turno));
+                const intervalos = generarIntervalosHorarios(horarioDoctor.hora_inicio, horarioDoctor.hora_fin);
+
+                intervalos.forEach(intervalo => {
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'time-slot';
+                    timeSlot.textContent = intervalo;
+
+                    if (horariosOcupados.has(intervalo)) {
+                        timeSlot.classList.add('ocupado');
+                        timeSlot.title = 'Horario no disponible';
+                    } else {
+                        timeSlot.title = 'Horario disponible';
+                        timeSlot.onclick = () => seleccionarHorario(intervalo);
+                    }
+                    timeGrid.appendChild(timeSlot);
+                });
+            }
+        }
+
+        async function seleccionarHorario(intervalo) {
+            const doctorSelect = document.getElementById('doctorSelect');
+            const especialidadSelect = document.getElementById('especialidadSelect');
+            const doctorId = doctorSelect.value;
+            const especialidadId = especialidadSelect.value;
+            
+            if (!doctorId) {
+                alert('Por favor, seleccione un doctor antes de elegir un horario.');
+                return;
+            }
+
+            try {
+                const { data: verificarTurno, error: verificarError } = await supabase
+                    .from('solicitudes_turno')
+                    .select('id')
+                    .eq('doctor_id', doctorId)
+                    .eq('fecha_turno', selectedDate.toISOString().split('T')[0])
+                    .eq('hora_turno', intervalo)
+                    .single();
+
+                if (verificarError && verificarError.code !== 'PGRST116') {
+                    throw verificarError;
+                }
+
+                if (verificarTurno) {
+                    alert('Lo sentimos, este horario ya no está disponible. Por favor seleccione otro.');
+                    actualizarModalHorarios();
+                    return;
+                }
+
+                const usuarioGuardado = sessionStorage.getItem('usuario');
+                if (!usuarioGuardado) {
+                    alert('Debe iniciar sesión para solicitar un turno.');
+                    return;
+                }
+
+                const usuario = JSON.parse(usuarioGuardado);
+                const { data: userData, error: userError } = await supabase
+                    .from('usuarios')
+                    .select('id_usuario')
+                    .eq('nombre', usuario.nombre)
+                    .eq('apellido', usuario.apellido)
+                    .single();
+
+                if (userError) throw userError;
+
+                // Debug para verificar el día
+                const diaSeleccionado = selectedDate.getDay();
+                console.log('Fecha seleccionada:', selectedDate);
+                console.log('Día de la semana (número):', diaSeleccionado);
+                console.log('Nombre del día:', diasSemana[diaSeleccionado]);
+
+                window.turnoPendiente = {
+                    pacienteId: userData.id_usuario,
+                    doctorId,
+                    especialidadId,
+                    fecha: selectedDate.toISOString().split('T')[0],
+                    hora: intervalo,
+                    nombreDia: diasSemana[selectedDate.getDay()],
+                    mes: (selectedDate.getMonth() + 1).toString().padStart(2, '0'),
+                    año: selectedDate.getFullYear().toString(),
+                    doctorNombre: doctorSelect.options[doctorSelect.selectedIndex].text,
+                    especialidadNombre: especialidadSelect.options[especialidadSelect.selectedIndex].text,
+                };
+
+                // Debug para verificar el objeto turnoPendiente
+                console.log('Turno pendiente:', window.turnoPendiente);
+
+                mostrarConfirmacion(window.turnoPendiente);
+
+            } catch (error) {
+                handleError(error, 'Error al preparar el turno');
+            }
+        }
+
+        function mostrarConfirmacion(turnoData) {
+            const { doctorNombre, especialidadNombre, fecha, hora } = turnoData;
+            const fechaObj = new Date(fecha);
+            document.getElementById('confirmationDetails').innerHTML = `
+                <p><strong>Doctor:</strong> ${doctorNombre}</p>
+                <p><strong>Especialidad:</strong> ${especialidadNombre}</p>
+                <p><strong>Fecha:</strong> ${formatearFecha(fechaObj)}</p>
+                <p><strong>Hora:</strong> ${hora}</p>
+            `;
+            
+            toggleElementDisplay('confirmationModal', true);
+            toggleElementDisplay('overlay', true);
+        }
+
+        window.confirmarTurno = async () => {
+            if (!window.turnoPendiente) return;
+            try {
+                const { error } = await supabase
+                    .from('solicitudes_turno')
+                    .insert([{
+                        paciente_id: window.turnoPendiente.pacienteId,
+                        doctor_id: window.turnoPendiente.doctorId,
+                        especialidad_id: window.turnoPendiente.especialidadId,
+                        fecha_turno: window.turnoPendiente.fecha,
+                        hora_turno: window.turnoPendiente.hora,
+                        dia_semana_id: obtenerNombreDia(selectedDate),
+                        estado: 'pendiente',
+                        mes_turno: window.turnoPendiente.mes,
+                        año_turno: window.turnoPendiente.año
+                    }]);
+
+                if (error) throw error;
+                alert('Turno registrado exitosamente');
+                window.closeTimeSlots();
+                window.cancelarConfirmacion();
+            } catch (error) {
+                handleError(error, 'Error al registrar el turno');
+            }
+        };
+
+        document.getElementById('doctorSelect').addEventListener('change', async function(e) {
+            if (isUpdatingEspecialidad) return; // Evitar loop
+            
+            const doctorId = e.target.value;
+            console.log('Doctor seleccionado:', doctorId);
+            
+            try {
+                isUpdatingDoctor = true;
+                
+                if (doctorId) {
+                    await cargarEspecialidadesDoctor(doctorId);
+                    await obtenerDiasDisponiblesDoctor(doctorId);
+                } else {
+                    // Restablecer todo cuando se deselecciona el doctor
+                    document.getElementById('especialidadSelect').value = '';
+                    await cargarEspecialidades();
+                    await cargarDoctores();
+                    diasDisponiblesDoctor = [];
+                    updateCalendar();
+                }
+            } finally {
+                isUpdatingDoctor = false;
+            }
+        });
+
+        document.getElementById('especialidadSelect').addEventListener('change', async function(e) {
+            if (isUpdatingDoctor) return; // Evitar loop
+            
+            const especialidadId = e.target.value;
+            console.log('Especialidad seleccionada:', especialidadId);
+            
+            try {
+                isUpdatingEspecialidad = true;
+                
+                if (especialidadId) {
+                    await cargarDoctores(especialidadId);
+                } else {
+                    // Restablecer la lista completa de doctores cuando se deselecciona la especialidad
+                    document.getElementById('doctorSelect').value = '';
+                    await cargarDoctores();
+                    await cargarEspecialidades();
+                    diasDisponiblesDoctor = [];
+                    updateCalendar();
+                }
+            } finally {
+                isUpdatingEspecialidad = false;
+            }
+        });
+
+        document.getElementById('prevMonth').addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateCalendar();
+        });
+
+        document.getElementById('nextMonth').addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateCalendar();
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                if (!await verificarConexionSupabase()) return;
+
+                await Promise.all([
+                    cargarDoctores(),
+                    cargarEspecialidades()
+                ]);
+
+                updateCalendar();
+            } catch (error) {
+                handleError(error, 'Error al cargar la página');
+            }
+        });
+
+        async function verificarConexionSupabase() {
+            try {
+                const { error } = await supabase
+                    .from('especialidades')
+                    .select('count')
+                    .single();
+
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                alert('Error de conexión con la base de datos. Por favor, recarga la página.');
+                return false;
+            }
+        }
+
+        async function verificarSesion() {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) {
+                console.error('Error al verificar la sesión:', error.message);
+                return false;
+            }
+            return session !== null;
+        }
+
+        async function restaurarEstado() {
+            const doctorSelect = document.getElementById('doctorSelect');
+            const especialidadSelect = document.getElementById('especialidadSelect');
+            
+            if (doctorSelect.value) {
+                await obtenerDiasDisponiblesDoctor(doctorSelect.value);
+            }
+            
+            // Restaurar selecciones previas si existen
+            const estadoGuardado = sessionStorage.getItem('estadoTurnos');
+            if (estadoGuardado) {
+                const estado = JSON.parse(estadoGuardado);
+                if (estado.doctorId) {
+                    doctorSelect.value = estado.doctorId;
+                    await obtenerDiasDisponiblesDoctor(estado.doctorId);
+                }
+                if (estado.especialidadId) {
+                    especialidadSelect.value = estado.especialidadId;
+                }
+            }
+        }
+
+        async function cargarEspecialidadesDoctor(doctorId) {
+            try {
+                console.log('Cargando especialidades para doctor:', doctorId); // Debug
+                const { data: especialidadesDoctor, error } = await supabase
+                    .from('doctor_especialidad')
+                    .select(`
+                        especialidad_id,
+                        especialidades (
+                            id,
+                            especialidad
+                        )
+                    `)
+                    .eq('id_especialidad', doctorId);
+
+                if (error) {
+                    console.error('Error al cargar especialidades del doctor:', error);
+                    throw error;
+                }
+
+                console.log('Especialidades del doctor:', especialidadesDoctor); // Debug
+
+                const especialidadSelect = document.getElementById('especialidadSelect');
+                const especialidadActual = especialidadSelect.value;
+                especialidadSelect.innerHTML = '<option value="">Seleccione una especialidad</option>';
+
+                if (especialidadesDoctor && especialidadesDoctor.length > 0) {
+                    especialidadesDoctor.forEach(ed => {
+                        if (ed.especialidades) {
+                            const option = document.createElement('option');
+                            option.value = ed.especialidades.id;
+                            option.textContent = ed.especialidades.especialidad;
+                            especialidadSelect.appendChild(option);
+                        }
+                    });
+
+                    // Mantener la especialidad seleccionada si aún está disponible
+                    if (especialidadActual) {
+                        const especialidadSigueDisponible = Array.from(especialidadSelect.options).some(
+                            option => option.value === especialidadActual
+                        );
+                        if (especialidadSigueDisponible) {
+                            especialidadSelect.value = especialidadActual;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error en cargarEspecialidadesDoctor:', error);
+                handleError(error, 'Error al cargar especialidades del doctor');
+            }
+        }
+
+        async function cargarDoctores(especialidadId = null) {
+            try {
+                console.log('Iniciando carga de doctores...', especialidadId ? `Para especialidad: ${especialidadId}` : 'Todos');
+                
+                const doctorSelect = document.getElementById('doctorSelect');
+                const doctorActual = doctorSelect.value;
+                
+                let query = supabase
+                    .from('doctores')
+                    .select(`
+                        id_usuario,
+                        usuarios (
+                            nombre,
+                            apellido
+                        )
+                    `);
+
+                if (especialidadId) {
+                    const { data: doctoresEspecialidad, error: errorEsp } = await supabase
+                        .from('doctor_especialidad')
+                        .select('id_especialidad')
+                        .eq('especialidad_id', especialidadId);
+
+                    if (errorEsp) {
+                        console.error('Error al obtener doctores por especialidad:', errorEsp);
+                        throw errorEsp;
+                    }
+
+                    if (doctoresEspecialidad?.length) {
+                        query = query.in('id_usuario', doctoresEspecialidad.map(d => d.id_especialidad));
+                    }
+                }
+
+                const { data: doctores, error } = await query;
+                
+                if (error) {
+                    console.error('Error al cargar doctores:', error);
+                    throw error;
+                }
+
+                console.log('Doctores cargados:', doctores);
+
+                doctorSelect.innerHTML = '<option value="">Seleccione un doctor</option>';
+                
+                if (doctores && doctores.length > 0) {
+                    doctores.forEach(doc => {
+                        if (doc.usuarios) {
+                            const option = document.createElement('option');
+                            option.value = doc.id_usuario;
+                            option.textContent = `Dr/a. ${doc.usuarios.nombre} ${doc.usuarios.apellido}`;
+                            doctorSelect.appendChild(option);
+                        }
+                    });
+
+                    // Mantener la selección del doctor si está disponible en la nueva lista
+                    if (doctorActual) {
+                        const doctorSigueDisponible = Array.from(doctorSelect.options).some(
+                            option => option.value === doctorActual
+                        );
+                        if (doctorSigueDisponible) {
+                            doctorSelect.value = doctorActual;
+                        }
+                    }
+                }
+
+                if (!especialidadId) {
+                    todosLosDoctores = doctores;
+                }
+            } catch (error) {
+                console.error('Error en cargarDoctores:', error);
+                handleError(error, 'Error al cargar doctores');
+            }
+        }
+
+        async function obtenerDiasDisponiblesDoctor(doctorId) {
+            if (!doctorId) {
+                console.log('No se proporcionó ID de doctor');
+                return;
+            }
+
+            try {
+                console.log('Obteniendo horarios para doctor:', doctorId); // Debug
+                const { data: horarios, error } = await supabase
+                    .from('horarios_doctor')
+                    .select('*')
+                    .eq('id', doctorId);
+
+                if (error) {
+                    console.error('Error al obtener horarios:', error);
+                    throw error;
+                }
+
+                console.log('Horarios obtenidos:', horarios); // Debug
+
+                if (horarios && horarios.length > 0) {
+                diasDisponiblesDoctor = horarios.map(h => h.dia_semana);
+                horarioDoctor = horarios[0];
+                    console.log('Días disponibles actualizados:', diasDisponiblesDoctor); // Debug
+                } else {
+                    console.log('No se encontraron horarios para el doctor');
+                    diasDisponiblesDoctor = [];
+                    horarioDoctor = null;
+                }
+
+                updateCalendar();
+            } catch (error) {
+                console.error('Error al obtener horarios del doctor:', error);
+                handleError(error, 'Error al cargar horarios del doctor');
+                diasDisponiblesDoctor = [];
+                horarioDoctor = null;
+                updateCalendar();
+            }
+        }
+
+        async function cargarEspecialidades() {
+            try {
+                const { data: especialidades, error } = await supabase
+                    .from('especialidades')
+                    .select('*');
+
+                if (error) throw error;
+
+                todasLasEspecialidades = especialidades;
+                const especialidadSelect = document.getElementById('especialidadSelect');
+                especialidadSelect.innerHTML = '<option value="">Seleccione una especialidad</option>';
+                
+                especialidades.forEach(esp => {
+                    const option = document.createElement('option');
+                    option.value = esp.id;
+                    option.textContent = esp.especialidad;
+                    especialidadSelect.appendChild(option);
+                });
+            } catch (error) {
+                handleError(error, 'Error al cargar especialidades');
+            }
+        }
+    </script>
+</body>
+</html> 

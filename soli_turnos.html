@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="MediAppoint - Sistema de Reserva de Citas Médicas" />
+    <title>MediAppoint - Solicitudes de Turnos</title>
+    <link rel="stylesheet" href="estilo.css" />
+    <style>
+      .tabla-turnos {
+        margin-top: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+        width: 100%;
+        overflow-x: auto;
+      }
+      
+      #tablaTurnos {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px;
+      }
+      
+      #tablaTurnos th, #tablaTurnos td {
+        border: 1px solid #ddd;
+        padding: 12px 8px;
+        text-align: left;
+        white-space: nowrap;
+      }
+      
+      #tablaTurnos th {
+        background-color: #f4f4f4;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+      
+      #tablaTurnos tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      #tablaTurnos tr.expandible-row {
+        background-color: #f5f5f5;
+      }
+      
+      .estado-select {
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        width: 100%;
+        max-width: 150px;
+      }
+      
+      .actualizar-btn {
+        padding: 8px 16px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+        max-width: 120px;
+      }
+      
+      .actualizar-btn:hover {
+        background-color: #45a049;
+      }
+
+      .container {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      h2 {
+        margin: 20px 0;
+        color: #333;
+      }
+
+      .volver-btn {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-bottom: 20px;
+      }
+
+      .volver-btn:hover {
+        background-color: #0056b3;
+      }
+
+      .expandir-btn {
+        padding: 5px 10px;
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9em;
+        transition: background-color 0.3s ease;
+      }
+
+      .expandir-btn:hover {
+        background-color: #5a6268;
+      }
+
+      .expandir-btn.activo {
+        background-color: #5a6268;
+        transform: rotate(180deg);
+      }
+
+      .detalles-turno {
+        display: none;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        margin: 10px 0;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+      }
+
+      .detalles-turno.visible {
+        display: block;
+        animation: slideDown 0.3s ease-out;
+      }
+
+      .detalles-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        padding: 15px;
+      }
+
+      .detalle-item {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+
+      .detalle-titulo {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .detalle-valor {
+        color: #212529;
+        font-size: 1.1em;
+      }
+
+      .estado-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: 500;
+      }
+
+      .estado-pendiente {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+
+      .estado-confirmado {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      .estado-rechazado {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+
+      .estado-cancelado {
+        background-color: #e2e3e5;
+        color: #383d41;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .detalles-placeholder {
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <button class="volver-btn" onclick="window.location.href='index_sec.html'">Volver al Panel</button>
+      <h2>Gestión de Turnos</h2>
+      <div class="tabla-turnos">
+        <table id="tablaTurnos">
+          <thead>
+            <tr>
+              <th></th>
+              <th>ID</th>
+              <th>Dia Elegido</th>
+              <th>Fecha del Turno</th>
+              <th>Hora del Turno</th>
+              <th>Estado Actual</th>
+              <th>Cambiar Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="turnosTableBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script type="module">
+      import { supabase } from './supabaseClient.js';
+
+      // Verificar si hay un usuario en sesión al cargar la página
+      window.onload = () => {
+        const usuarioGuardado = sessionStorage.getItem('usuario');
+        if (!usuarioGuardado) {
+          window.location.href = 'index.html';
+        } else {
+          cargarTurnos();
+        }
+      };
+
+      // Función para cargar los turnos
+      async function cargarTurnos() {
+        try {
+          const { data: turnos, error } = await supabase
+            .from('solicitudes_turno')
+            .select('*');
+
+          if (error) throw error;
+
+          turnosTableBody.innerHTML = '';
+          for (const turno of turnos) {
+            // Obtener datos del usuario (paciente)
+            const { data: usuario, error: userError } = await supabase
+              .from('usuarios')
+              .select('id_usuario, nombre, apellido, correo, dni')
+              .eq('id_usuario', turno.paciente_id)
+              .single();
+
+            if (userError) throw userError;
+
+            // Obtener datos del doctor
+            const { data: doctor, error: doctorError } = await supabase
+              .from('usuarios')
+              .select('nombre, apellido')
+              .eq('id_usuario', turno.doctor_id)
+              .single();
+
+            if (doctorError) throw doctorError;
+
+            // Obtener datos de doctor_especialidad
+            const { data: doctorEsp, error: espError } = await supabase
+              .from('doctor_especialidad')
+              .select('id_especialidad, especialidad_id')
+              .eq('id_especialidad', turno.doctor_id)
+              .eq('especialidad_id', turno.especialidad_id)
+              .single();
+
+            if (espError) throw espError;
+
+            const { data: esp, error: espError2 } = await supabase
+              .from('especialidades')
+              .select('id, especialidad')
+              .eq('id', turno.especialidad_id)
+              .single();
+
+            if (espError2) throw espError2;
+
+            // Crear la fila principal
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>
+                <button class="expandir-btn" title="Ver más detalles">▼</button>
+              </td>
+              <td>${turno.id}</td>
+              <td>${turno.dia_semana_id}</td>
+              <td>${turno.fecha_turno}</td>
+              <td>${turno.hora_turno}</td>
+              <td>${turno.estado || 'Sin estado'}</td>
+              <td>
+                <select class="estado-select">
+                  <option value="">Seleccionar estado</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="confirmado">Confirmado</option>
+                  <option value="rechazado">Rechazado</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
+              </td>
+              <td>
+                <button class="actualizar-btn" data-id="${turno.id}">Actualizar</button>
+              </td>
+            `;
+            turnosTableBody.appendChild(row);
+
+            // Crear la fila expandible
+            const detallesRow = document.createElement('tr');
+            detallesRow.className = 'expandible-row';
+            detallesRow.style.display = 'none';
+            
+            const estadoClase = turno.estado ? `estado-${turno.estado.toLowerCase()}` : 'estado-pendiente';
+            
+            detallesRow.innerHTML = `
+              <td colspan="8">
+                <div class="detalles-turno">
+                  <div class="detalles-grid">
+                    <div class="detalle-item">
+                      <div class="detalle-titulo">Nombre del Paciente</div>
+                      <div class="detalle-valor">${usuario.nombre}</div>
+                    </div>
+                    <div class="detalle-item">
+                      <div class="detalle-titulo">Apellido</div>
+                      <div class="detalle-valor">${usuario.apellido}</div>
+                    </div>
+                    <div class="detalle-item">
+                      <div class="detalle-titulo">Correo Electrónico</div>
+                      <div class="detalle-valor">${usuario.correo}</div>
+                    </div>
+                    <div class="detalle-item">
+                      <div class="detalle-titulo">DNI</div>
+                      <div class="detalle-valor">${usuario.dni}</div>
+                    </div>
+                    <div class="detalle-item">
+                      <div class="detalle-titulo">Doctor: Nombre</div>
+                      <div class="detalle-valor">${doctor.nombre}</div>
+                    </div>
+                    <div class="detalle-item">
+                      <div class="detalle-titulo">Doctor: Apellido</div>
+                      <div class="detalle-valor">${doctor.apellido}</div>
+                    </div>
+                    <div class="detalle-item">
+                      <div class="detalle-titulo">Especialidad</div>
+                      <div class="detalle-valor">${esp.especialidad}</div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            `;
+            turnosTableBody.appendChild(detallesRow);
+
+            // Agregar evento al botón expandir
+            const expandirBtn = row.querySelector('.expandir-btn');
+            expandirBtn.addEventListener('click', () => {
+              detallesRow.style.display = detallesRow.style.display === 'none' ? 'table-row' : 'none';
+              expandirBtn.classList.toggle('activo');
+              const detallesDiv = detallesRow.querySelector('.detalles-turno');
+              detallesDiv.classList.toggle('visible');
+            });
+          }
+
+          // Agregar event listeners a los botones de actualizar
+          document.querySelectorAll('.actualizar-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+              const id = e.target.dataset.id;
+              const select = e.target.parentElement.parentElement.querySelector('.estado-select');
+              const nuevoEstado = select.value;
+
+              if (!nuevoEstado) {
+                alert('Por favor seleccione un estado');
+                return;
+              }
+
+              try {
+                const { error } = await supabase
+                  .from('solicitudes_turno')
+                  .update({ estado: nuevoEstado })
+                  .eq('id', id);
+
+                if (error) throw error;
+                alert('Estado actualizado correctamente');
+                cargarTurnos(); // Recargar la tabla
+              } catch (error) {
+                alert('Error al actualizar el estado: ' + error.message);
+              }
+            });
+          });
+        } catch (error) {
+          alert('Error al cargar los turnos: ' + error.message);
+        }
+      }
+    </script>
+  </body>
+</html> 

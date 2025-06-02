@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="MediAppoint - Sistema de Reserva de Citas Médicas" />
+    <title>MediAppoint - Panel de Secretaria</title>
+    <link rel="stylesheet" href="estilo.css" />
+  </head>
+  <body>
+    <!-- Header -->
+    <header>
+      <div class="header-container">
+        <h1>Clinica MedioPelo</h1>
+        <div class="header-buttons">
+          <div id="userSection" style="display: none;">
+            <button id="changeViewBtn" class="nav-btn">Cambiar Vista</button>
+            <span id="userName"></span>
+            <button id="logoutBtn">Cerrar sesión</button>
+          </div>
+          <div id="guestSection">
+            <button class="login" id="loginBtn">Iniciar sesión</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Modal de selección de vista -->
+    <div id="roleModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h2>Seleccionar Vista</h2>
+        <p>¿Cómo deseas ingresar al sistema?</p>
+        <button id="viewAsDoctor" class="role-btn" style="display: none;">Vista de Doctor</button>
+        <button id="viewAsSecretary" class="role-btn">Vista de Secretaria</button>
+        <button id="viewAsPatient" class="role-btn">Vista de Paciente</button>
+      </div>
+    </div>
+
+    <!-- Hero Shortcuts -->
+    <div class="hero-shortcuts">
+      <button id="miPerfilBtn">
+        <span class="icon-placeholder"></span>
+        <span>Mi Perfil</span>
+      </button>
+      <button id="verTurnosBtn">
+        <span class="icon-placeholder"></span>
+        <span>Ver Turnos</span>
+      </button>
+      <button>
+        <span class="icon-placeholder"></span>
+        <span>Gestionar Horarios</span>
+      </button>
+      <button>
+        <span class="icon-placeholder"></span>
+        <span>Historial de Pacientes</span>
+      </button>
+    </div>
+
+    <!-- Categories -->
+    <div class="categories">
+      <div class="categories-grid">
+        <button><span>Próximos Turnos</span></button>
+        <button><span>Pacientes</span></button>
+        <button><span>Horarios</span></button>
+        <button><span>Reportes</span></button>
+        <button><span>Configuración</span></button>
+        <button><span>Notificaciones</span></button>
+        <button><span>Mensajes</span></button>
+        <button><span>Ayuda</span></button>
+      </div>
+    </div>
+
+    <!-- Popular Section -->
+    <div class="popular" id="popularSection">
+        <div class="popular-image">
+        <img src="img/fondo2.jpg" alt="Consulta médica en escritorio">
+      </div>
+    </div>
+      
+    <div class="popular-header">
+    <h3>¿Necesitas ayuda? Contactanos:</h3>
+    <form class="contact-form">
+    <input type="email" placeholder="Tu correo electrónico" required>
+    <textarea placeholder="Describe tu consulta" rows="4" required></textarea>
+    <button type="submit">Enviar</button>
+  </form>
+    </div>
+
+    <style>
+      /* Modal styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+
+      .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 1000px;
+        max-height: 80vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .close:hover {
+        color: #000;
+      }
+
+      /* Media queries para responsividad */
+      @media screen and (max-width: 768px) {
+        .modal-content {
+          margin: 2% auto;
+          width: 95%;
+          padding: 15px;
+        }
+      }
+    </style>
+
+    <!-- Footer -->
+    <footer>
+      <div class="footer-container">
+        <div class="footer-grid">
+          <div>
+            <h3>Mantente conectado con MediAppoint</h3>
+            <input type="email" placeholder="Ingresa tu correo electrónico" />
+          </div>
+          <div>
+            <h3>Acerca de</h3>
+            <ul>
+              <li>Servicios</li>
+              <li>Médicos</li>
+              <li>Citas</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Síguenos</h3>
+            <ul>
+              <li>Facebook</li>
+              <li>Twitter</li>
+              <li>Instagram</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Para Doctores</h3>
+            <ul>
+              <li>Gestión de turnos</li>
+              <li>Historial clínico</li>
+              <li>Emergencias</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { supabase } from './supabaseClient.js';
+
+      const userSection = document.getElementById('userSection');
+      const guestSection = document.getElementById('guestSection');
+      const userName = document.getElementById('userName');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const miPerfilBtn = document.getElementById('miPerfilBtn');
+      const changeViewBtn = document.getElementById('changeViewBtn');
+      const roleModal = document.getElementById('roleModal');
+      const viewAsDoctor = document.getElementById('viewAsDoctor');
+      const viewAsSecretary = document.getElementById('viewAsSecretary');
+      const viewAsPatient = document.getElementById('viewAsPatient');
+      const verTurnosBtn = document.getElementById('verTurnosBtn');
+
+      // Verificar si hay un usuario en sesión al cargar la página
+      window.onload = () => {
+        const usuarioGuardado = sessionStorage.getItem('usuario');
+        if (usuarioGuardado) {
+          const usuario = JSON.parse(usuarioGuardado);
+          userName.textContent = `${usuario.nombre} ${usuario.apellido}`;
+          userSection.style.display = 'flex';
+          guestSection.style.display = 'none';
+
+          // Verificar roles del usuario para mostrar las opciones correspondientes
+          const roles = new Set(usuario.roles || ['paciente']);
+          viewAsDoctor.style.display = roles.has('doctor') ? 'block' : 'none';
+        } else {
+          window.location.href = 'index.html';
+        }
+      };
+
+      // Función para manejar el botón Mi Perfil
+      miPerfilBtn.onclick = () => {
+        window.location.href = 'miperfil_sec.html';
+      };
+
+      // Manejar el cambio de vista
+      changeViewBtn.onclick = () => {
+        roleModal.style.display = 'block';
+      };
+
+      viewAsDoctor.onclick = () => {
+        window.location.href = 'index_doc.html';
+      };
+
+      viewAsSecretary.onclick = () => {
+        roleModal.style.display = 'none';
+      };
+
+      viewAsPatient.onclick = () => {
+        window.location.href = 'index.html';
+      };
+
+      // Redirigir a la página de turnos
+      verTurnosBtn.onclick = () => {
+        window.location.href = 'soli_turnos.html';
+      };
+
+      // Cerrar el modal al hacer clic fuera de él
+      window.onclick = (e) => {
+        if (e.target == roleModal) {
+          roleModal.style.display = 'none';
+        }
+      };
+
+      // Manejar el cierre de sesión
+      logoutBtn.onclick = () => {
+        sessionStorage.removeItem('usuario');
+        window.location.href = 'index.html';
+      };
+    </script>
+  </body>
+</html>

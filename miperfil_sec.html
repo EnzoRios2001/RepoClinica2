@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil Secretaria - MediAppoint</title>
+    <link rel="stylesheet" href="estilo.css">
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .profile-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .profile-form {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .form-group input:disabled {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
+        }
+        .edit-btn {
+            position: absolute;
+            right: 10px;
+            top: 35px;
+            background: none;
+            border: none;
+            color: #2563eb;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .save-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: none;
+        }
+        .save-btn:hover {
+            background: #1d4ed8;
+        }
+        .save-btn.visible {
+            display: block;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        .alert.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2563eb;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <h1>Clinica MedioPelo</h1>
+            <div class="header-buttons">
+                <button class="nav-btn" onclick="window.location.href='index_sec.html'">Volver al Inicio</button>
+                <span id="userName"></span>
+                <button id="logoutBtn">Cerrar sesión</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="profile-container">
+        <div class="profile-header">
+            <h2>Mi Perfil Secretaria</h2>
+        </div>
+        
+        <div id="alertMessage" class="alert"></div>
+
+        <form class="profile-form" id="profileForm">
+            <div class="form-group">
+                <label for="nombre">Nombre:</label>
+                <input type="text" id="nombre" name="nombre" disabled>
+                <button type="button" class="edit-btn" onclick="toggleEdit('nombre')">Editar</button>
+            </div>
+            <div class="form-group">
+                <label for="apellido">Apellido:</label>
+                <input type="text" id="apellido" name="apellido" disabled>
+                <button type="button" class="edit-btn" onclick="toggleEdit('apellido')">Editar</button>
+            </div>
+            <div class="form-group">
+                <label for="dni">DNI:</label>
+                <input type="text" id="dni" name="dni" disabled>
+                <button type="button" class="edit-btn" onclick="toggleEdit('dni')">Editar</button>
+            </div>
+            <div class="form-group">
+                <label for="correo">Correo:</label>
+                <input type="email" id="correo" name="correo" disabled>
+                <button type="button" class="edit-btn" onclick="toggleEdit('correo')">Editar</button>
+            </div>
+            <div class="form-group">
+                <label for="contraseña">Contraseña:</label>
+                <input type="password" id="contraseña" name="contraseña" disabled>
+                <button type="button" class="edit-btn" onclick="toggleEdit('contraseña')">Editar</button>
+            </div>
+
+           
+
+    <script type="module">
+        import { supabase } from './supabaseClient.js';
+
+        // Verificar si hay sesión activa
+        const usuarioGuardado = sessionStorage.getItem('usuario');
+        if (!usuarioGuardado) {
+            window.location.href = 'index.html';
+        }
+
+        // Variables para el formulario
+        const form = document.getElementById('profileForm');
+        const saveBtn = document.getElementById('saveBtn');
+        const alertMessage = document.getElementById('alertMessage');
+        const userName = document.getElementById('userName');
+        const logoutBtn = document.getElementById('logoutBtn');
+        let editedFields = new Set();
+        let userId = null;
+
+        // Cargar datos del usuario y doctor
+        async function loadUserData() {
+            try {
+                const usuario = JSON.parse(usuarioGuardado);
+                console.log('Cargando datos del usuario:', usuario);
+
+                // Obtener datos del usuario usando nombre y apellido
+                const { data: userData, error: userError } = await supabase
+                    .from('usuarios')
+                    .select('id_usuario, nombre, apellido, dni, correo, contraseña')
+                    .eq('nombre', usuario.nombre)
+                    .eq('apellido', usuario.apellido)
+                    .single();
+
+                if (userError) {
+                    console.error('Error al cargar datos de usuario:', userError);
+                    showAlert('Error al cargar los datos: ' + userError.message, 'error');
+                    return;
+                }
+
+                if (userData) {
+                    console.log('Datos de usuario cargados:', userData);
+                    userId = userData.id_usuario;
+                    document.getElementById('nombre').value = userData.nombre;
+                    document.getElementById('apellido').value = userData.apellido;
+                    document.getElementById('dni').value = userData.dni;
+                    document.getElementById('correo').value = userData.correo;
+                    document.getElementById('contraseña').value = userData.contraseña;
+                    userName.textContent = `${userData.nombre} ${userData.apellido}`;
+
+                    // Cargar datos del doctor usando id_usuario
+                    console.log('Buscando datos de doctor para id_usuario:', userId);
+                    const { data: doctorData, error: doctorError } = await supabase
+                        .from('doctores')
+                        .select('*')
+                        .eq('id_usuario', userId)
+                        .single();
+
+                    if (doctorError && doctorError.code !== 'PGRST116') {
+                        console.error('Error al cargar datos de doctor:', doctorError);
+                        showAlert('Error al cargar datos profesionales: ' + doctorError.message, 'error');
+                        return;
+                    }
+
+                }
+            } catch (error) {
+                console.error('Error general:', error);
+                showAlert('Error al cargar los datos: ' + error.message, 'error');
+            }
+        }
+
+        // Función para habilitar/deshabilitar campos
+        window.toggleEdit = function(fieldId) {
+            const input = document.getElementById(fieldId);
+            const wasDisabled = input.disabled;
+            input.disabled = !wasDisabled;
+            
+            if (!wasDisabled) {
+                editedFields.delete(fieldId);
+            } else {
+                editedFields.add(fieldId);
+            }
+            
+            saveBtn.classList.toggle('visible', editedFields.size > 0);
+        }
+
+        // Función para mostrar alertas
+        function showAlert(message, type) {
+            alertMessage.textContent = message;
+            alertMessage.className = `alert ${type}`;
+            alertMessage.style.display = 'block';
+            setTimeout(() => {
+                alertMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // Manejar el envío del formulario
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const usuario = JSON.parse(usuarioGuardado);
+                console.log('Guardando cambios para usuario:', usuario);
+                
+                const userFields = ['nombre', 'apellido', 'dni', 'correo', 'contraseña'];
+
+                const userUpdates = {};
+                const doctorUpdates = {};
+
+                editedFields.forEach(field => {
+                    if (field === 'activo') {
+                        doctorUpdates[field] = document.getElementById(field).checked;
+                    } else {
+                        const value = document.getElementById(field).value;
+                        if (userFields.includes(field)) {
+                            userUpdates[field] = value;
+                        } else if (doctorFields.includes(field)) {
+                            doctorUpdates[field] = value;
+                        }
+                    }
+                });
+
+                console.log('Actualizaciones de usuario:', userUpdates);
+                console.log('Actualizaciones de doctor:', doctorUpdates);
+
+                // Actualizar datos de usuario si hay cambios
+                if (Object.keys(userUpdates).length > 0) {
+                    const { error: userError } = await supabase
+                        .from('usuarios')
+                        .update(userUpdates)
+                        .eq('id_usuario', userId);
+
+                    if (userError) {
+                        console.error('Error al actualizar usuario:', userError);
+                        showAlert('Error al actualizar los datos de usuario: ' + userError.message, 'error');
+                        return;
+                    }
+                }
+
+                // Actualizar datos de doctor si hay cambios
+                if (Object.keys(doctorUpdates).length > 0) {
+                    const { error: doctorError } = await supabase
+                        .from('doctores')
+                        .update(doctorUpdates)
+                        .eq('id_usuario', userId);
+
+                    if (doctorError) {
+                        console.error('Error al actualizar doctor:', doctorError);
+                        showAlert('Error al actualizar los datos profesionales: ' + doctorError.message, 'error');
+                        return;
+                    }
+                }
+
+                // Actualizar sessionStorage con los nuevos datos básicos
+                if (userUpdates.nombre || userUpdates.apellido) {
+                    const newUserData = {
+                        ...usuario,
+                        nombre: document.getElementById('nombre').value,
+                        apellido: document.getElementById('apellido').value
+                    };
+                    sessionStorage.setItem('usuario', JSON.stringify(newUserData));
+                }
+
+                showAlert('Datos actualizados correctamente', 'success');
+                editedFields.clear();
+                saveBtn.classList.remove('visible');
+                
+                // Deshabilitar todos los campos excepto el checkbox de activo
+                document.querySelectorAll('input:not([type="checkbox"])').forEach(input => {
+                    input.disabled = true;
+                });
+                document.getElementById('activo').disabled = true;
+
+                // Recargar los datos para asegurar que todo está actualizado
+                await loadUserData();
+
+            } catch (error) {
+                console.error('Error general al guardar:', error);
+                showAlert('Error al guardar los cambios: ' + error.message, 'error');
+            }
+        };
+
+        // Manejar el cierre de sesión
+        logoutBtn.onclick = () => {
+            sessionStorage.removeItem('usuario');
+            window.location.href = 'index_sec.html';
+        };
+
+        // Cargar datos al iniciar
+        loadUserData();
+    </script>
+</body>
+</html>

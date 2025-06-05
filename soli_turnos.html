@@ -14,11 +14,14 @@
         overflow-y: auto;
         width: 100%;
         overflow-x: auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       }
       
       #tablaTurnos {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         min-width: 600px;
       }
       
@@ -34,14 +37,19 @@
         position: sticky;
         top: 0;
         z-index: 1;
-      }
-      
-      #tablaTurnos tr:nth-child(even) {
-        background-color: #f9f9f9;
+        border-bottom: 2px solid #ddd;
       }
 
-      #tablaTurnos tr.expandible-row {
-        background-color: #f5f5f5;
+      #tablaTurnos tr:last-child td {
+        border-bottom: none;
+      }
+      
+      .expandible-row {
+        background-color: #f8f9fa;
+      }
+
+      .expandible-row td {
+        padding: 0 !important;
       }
       
       .estado-select {
@@ -100,11 +108,17 @@
         border-radius: 4px;
         cursor: pointer;
         font-size: 0.9em;
-        transition: background-color 0.3s ease;
+        transition: all 0.3s ease;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .expandir-btn:hover {
         background-color: #5a6268;
+        transform: scale(1.1);
       }
 
       .expandir-btn.activo {
@@ -113,13 +127,13 @@
       }
 
       .detalles-turno {
-        display: none;
-        padding: 20px;
+        padding: 15px;
         background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 4px;
-        margin: 10px 0;
+        border-radius: 0 0 8px 8px;
+        margin: 0;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        width: 100%;
+        box-sizing: border-box;
       }
 
       .detalles-turno.visible {
@@ -129,30 +143,41 @@
 
       .detalles-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-        padding: 15px;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        width: 100%;
+        box-sizing: border-box;
       }
 
       .detalle-item {
         background: white;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 12px;
+        border-radius: 6px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        min-width: 0;
       }
 
       .detalle-titulo {
         font-weight: 600;
         color: #495057;
-        margin-bottom: 8px;
-        font-size: 0.9em;
+        margin-bottom: 4px;
+        font-size: 0.85em;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .detalle-valor {
         color: #212529;
-        font-size: 1.1em;
+        font-size: 1em;
+        word-break: break-word;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .estado-badge {
@@ -200,18 +225,154 @@
         text-align: center;
         padding: 20px;
       }
+
+      .filtros-container {
+        margin: 20px 0;
+        display: flex;
+        gap: 10px;
+      }
+
+      .filtro-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.3s ease;
+      }
+
+      .btn-pendientes {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+
+      .btn-confirmados {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      .btn-rechazados {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+
+      .btn-todos {
+        background-color: #e2e3e5;
+        color: #383d41;
+      }
+
+      .filtro-btn:hover {
+        opacity: 0.9;
+      }
+
+      .filtro-btn.activo {
+        box-shadow: 0 0 0 2px #000;
+      }
+
+      @media (max-width: 768px) {
+        .detalles-grid {
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 10px;
+        }
+
+        .detalle-item {
+          padding: 10px;
+        }
+
+        .detalle-titulo {
+          font-size: 0.8em;
+        }
+
+        .detalle-valor {
+          font-size: 0.9em;
+        }
+      }
+
+      .registro-container {
+        display: none;
+        margin-top: 20px;
+        width: 100%;
+        overflow-x: auto;
+      }
+
+      #tablaRegistro {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 600px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      #tablaRegistro th {
+        background-color: #f4f4f4;
+        padding: 12px 8px;
+        text-align: left;
+        border-bottom: 2px solid #ddd;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+      }
+
+      #tablaRegistro th:hover {
+        background-color: #e9ecef;
+      }
+
+      #tablaRegistro th::after {
+        content: '↕';
+        position: absolute;
+        right: 8px;
+        opacity: 0.3;
+      }
+
+      #tablaRegistro th.asc::after {
+        content: '↑';
+        opacity: 1;
+      }
+
+      #tablaRegistro th.desc::after {
+        content: '↓';
+        opacity: 1;
+      }
+
+      #tablaRegistro td {
+        padding: 12px 8px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      #tablaRegistro tr:last-child td {
+        border-bottom: none;
+      }
+
+      .btn-registro {
+        background-color: #17a2b8;
+        color: white;
+      }
+
+      .btn-registro:hover {
+        background-color: #138496;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <button class="volver-btn" onclick="window.location.href='index_sec.html'">Volver al Panel</button>
       <h2>Gestión de Turnos</h2>
+      <div class="filtros-container">
+        <button class="filtro-btn btn-todos" data-filtro="todos">Todos los turnos</button>
+        <button class="filtro-btn btn-pendientes" data-filtro="pendientes">Turnos Pendientes</button>
+        <button class="filtro-btn btn-confirmados" data-filtro="confirmados">Turnos Confirmados</button>
+        <button class="filtro-btn btn-rechazados" data-filtro="rechazados">Turnos Cancelados/Rechazados</button>
+        <button class="filtro-btn btn-registro" data-filtro="registro">Registro de Estados</button>
+      </div>
       <div class="tabla-turnos">
         <table id="tablaTurnos">
           <thead>
             <tr>
               <th></th>
               <th>ID</th>
+              <th>DNI</th>
               <th>Dia Elegido</th>
               <th>Fecha del Turno</th>
               <th>Hora del Turno</th>
@@ -224,10 +385,29 @@
           </tbody>
         </table>
       </div>
+      <div class="registro-container" id="registroContainer">
+        <table id="tablaRegistro">
+          <thead>
+            <tr>
+              <th data-sort="id_turno">ID Turno</th>
+              <th data-sort="estado_nuevo">Estado</th>
+              <th data-sort="cambiado_por">Cambiado Por</th>
+              <th data-sort="cambiado_en">Fecha Cambio</th>
+              <th data-sort="cambiado_alas">Hora Cambio</th>
+            </tr>
+          </thead>
+          <tbody id="registroTableBody"></tbody>
+        </table>
+      </div>
     </div>
 
     <script type="module">
       import { supabase } from './supabaseClient.js';
+
+      let filtroActual = 'pendientes';
+      let registroData = [];
+      let sortColumn = 'cambiado_en';
+      let sortDirection = 'desc';
 
       // Verificar si hay un usuario en sesión al cargar la página
       window.onload = () => {
@@ -242,9 +422,28 @@
       // Función para cargar los turnos
       async function cargarTurnos() {
         try {
-          const { data: turnos, error } = await supabase
-            .from('solicitudes_turno')
-            .select('*');
+          if (filtroActual === 'registro') {
+            document.querySelector('.tabla-turnos').style.display = 'none';
+            document.querySelector('.registro-container').style.display = 'block';
+            await cargarRegistro();
+            return;
+          }
+
+          document.querySelector('.tabla-turnos').style.display = 'block';
+          document.querySelector('.registro-container').style.display = 'none';
+
+          let query = supabase.from('solicitudes_turno').select('*');
+          
+          // Aplicar filtro según el estado seleccionado
+          if (filtroActual === 'pendientes') {
+            query = query.eq('estado', 'pendiente');
+          } else if (filtroActual === 'confirmados') {
+            query = query.eq('estado', 'confirmado');
+          } else if (filtroActual === 'rechazados') {
+            query = query.or('estado.eq.rechazado,estado.eq.cancelado');
+          }
+
+          const { data: turnos, error } = await query;
 
           if (error) throw error;
 
@@ -293,6 +492,7 @@
                 <button class="expandir-btn" title="Ver más detalles">▼</button>
               </td>
               <td>${turno.id}</td>
+              <td>${usuario.dni}</td>
               <td>${turno.dia_semana_id}</td>
               <td>${turno.fecha_turno}</td>
               <td>${turno.hora_turno}</td>
@@ -336,8 +536,8 @@
                       <div class="detalle-valor">${usuario.correo}</div>
                     </div>
                     <div class="detalle-item">
-                      <div class="detalle-titulo">DNI</div>
-                      <div class="detalle-valor">${usuario.dni}</div>
+                      <div class="detalle-titulo">ID Usuario</div>
+                      <div class="detalle-valor">${usuario.id_usuario}</div>
                     </div>
                     <div class="detalle-item">
                       <div class="detalle-titulo">Doctor: Nombre</div>
@@ -350,6 +550,10 @@
                     <div class="detalle-item">
                       <div class="detalle-titulo">Especialidad</div>
                       <div class="detalle-valor">${esp.especialidad}</div>
+                    </div>
+                    <div class="detalle-item">
+                      <div class="detalle-titulo">ID Turno</div>
+                      <div class="detalle-valor">${turno.id}</div>
                     </div>
                   </div>
                 </div>
@@ -380,15 +584,41 @@
               }
 
               try {
-                const { error } = await supabase
+                const usuarioData = JSON.parse(sessionStorage.getItem('usuario'));
+                const usuarioId = usuarioData.id_usuario;
+                console.log('Intentando actualizar turno:', id, 'con estado:', nuevoEstado, 'por usuario:', usuarioId);
+                
+                // Primero actualizamos la tabla principal
+                const { error: errorUpdate } = await supabase
                   .from('solicitudes_turno')
                   .update({ estado: nuevoEstado })
                   .eq('id', id);
 
-                if (error) throw error;
+                if (errorUpdate) {
+                  console.error('Error al actualizar solicitudes_turno:', errorUpdate);
+                  throw errorUpdate;
+                }
+
+                // Luego insertamos el registro en la tabla de historial
+                const { data, error } = await supabase
+                  .from('estado_solicitudes_turno')
+                  .insert({ 
+                    id_turno: id,
+                    estado_nuevo: nuevoEstado,
+                    cambiado_por: usuarioId
+                  })
+                  .select();
+
+                if (error) {
+                  console.error('Error en estado_solicitudes_turno:', error);
+                  throw error;
+                }
+                
+                console.log('Respuesta de actualización:', data);
                 alert('Estado actualizado correctamente');
                 cargarTurnos(); // Recargar la tabla
               } catch (error) {
+                console.error('Error completo:', error);
                 alert('Error al actualizar el estado: ' + error.message);
               }
             });
@@ -397,6 +627,98 @@
           alert('Error al cargar los turnos: ' + error.message);
         }
       }
+
+      async function cargarRegistro() {
+        try {
+          const { data: registros, error } = await supabase
+            .from('estado_solicitudes_turno')
+            .select(`
+              *,
+              usuarios:cambiado_por (nombre, apellido)
+            `);
+
+          if (error) throw error;
+
+          registroData = registros;
+          mostrarRegistros();
+        } catch (error) {
+          alert('Error al cargar el registro: ' + error.message);
+        }
+      }
+
+      function mostrarRegistros() {
+        const tbody = document.getElementById('registroTableBody');
+        tbody.innerHTML = '';
+
+        // Ordenar datos
+        const datosOrdenados = [...registroData].sort((a, b) => {
+          let valorA = a[sortColumn];
+          let valorB = b[sortColumn];
+
+          if (sortColumn === 'cambiado_por') {
+            valorA = a.usuarios ? `${a.usuarios.nombre} ${a.usuarios.apellido}` : '';
+            valorB = b.usuarios ? `${b.usuarios.nombre} ${b.usuarios.apellido}` : '';
+          }
+
+          if (valorA < valorB) return sortDirection === 'asc' ? -1 : 1;
+          if (valorA > valorB) return sortDirection === 'asc' ? 1 : -1;
+          return 0;
+        });
+
+        datosOrdenados.forEach(registro => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${registro.id_turno}</td>
+            <td>${registro.estado_nuevo}</td>
+            <td>${registro.usuarios ? `${registro.usuarios.nombre} ${registro.usuarios.apellido}` : 'N/A'}</td>
+            <td>${new Date(registro.cambiado_en).toLocaleDateString()}</td>
+            <td>${registro.cambiado_alas || 'N/A'}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // Agregar event listeners para ordenamiento
+      document.querySelectorAll('#tablaRegistro th').forEach(th => {
+        th.addEventListener('click', () => {
+          const column = th.dataset.sort;
+          if (sortColumn === column) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortColumn = column;
+            sortDirection = 'asc';
+          }
+
+          // Actualizar indicadores visuales de ordenamiento
+          document.querySelectorAll('#tablaRegistro th').forEach(header => {
+            header.classList.remove('asc', 'desc');
+          });
+          th.classList.add(sortDirection);
+
+          mostrarRegistros();
+        });
+      });
+
+      // Agregar event listeners a los botones de filtro
+      document.querySelectorAll('.filtro-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          // Remover clase activo de todos los botones
+          document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('activo'));
+          // Agregar clase activo al botón clickeado
+          e.target.classList.add('activo');
+          
+          filtroActual = e.target.dataset.filtro;
+          cargarTurnos();
+        });
+      });
+
+      // Activar el filtro de pendientes por defecto al cargar la página
+      window.addEventListener('DOMContentLoaded', () => {
+        const btnPendientes = document.querySelector('[data-filtro="pendientes"]');
+        if (btnPendientes) {
+          btnPendientes.classList.add('activo');
+        }
+      });
     </script>
   </body>
 </html> 
